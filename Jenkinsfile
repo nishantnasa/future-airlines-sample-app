@@ -3,15 +3,6 @@ import java.text.SimpleDateFormat
 
 properties([
         [$class: 'RebuildSettings', autoRebuild: false, rebuildDisabled: false],
-        parameters([
-                choice(defaultValue: 'sit', choices: 'sit\ndev\nstg', description: 'Choose Target Environment?', name: 'target_env'),
-                string(defaultValue: 'GenerateTestFiles', description: 'Which JBehave Story to run?', name: 'jbehave_story'),
-                string(defaultValue: '100', description: 'offer_count', name: 'offer_count'),
-                string(defaultValue: '10', description: 'offer_allocation_per_member', name: 'offer_allocation_per_member'),
-                string(defaultValue: '1000', description: 'ff_user_count', name: 'ff_user_count'),
-                string(defaultValue: '2019-06-14', description: 'date_generated', name: 'date_generated'),
-                choice(defaultValue: 'java', choices: 'java\npython', description: 'Choose Project Type?', name: 'project_type')
-        ]),
         pipelineTriggers([])
 ])
 
@@ -38,13 +29,13 @@ if ("${project_type}" == "java") {
 
         }
 
-        def target_env = params.target_env
-        def jbehave_story = params.jbehave_story
-        def offer_count = params.offer_count
-        def offer_allocation_per_member = params.offer_allocation_per_member
-        def ff_user_count = params.ff_user_count
-        def date_generated_filename = new SimpleDateFormat('yyyy-MM-dd').parse(params.date_generated.trim()).format('yyyyMMdd')
-        def date_generated_bucketname = new SimpleDateFormat('yyyy-MM-dd').parse(params.date_generated.trim()).format('yyyy-MM-dd')
+        def target_env = "dev"
+        def jbehave_story = "GenerateTestFiles"
+        def offer_count = 10
+        def offer_allocation_per_member = 10
+        def ff_user_count = 100
+        def date_generated_filename = new SimpleDateFormat('yyyy-MM-dd').parse("2019-06-14").format('yyyyMMdd')
+        def date_generated_bucketname = new SimpleDateFormat('yyyy-MM-dd').parse("2019-06-14").format('yyyy-MM-dd')
         def account = ''
 
         if ("${target_env}" == "dev") {
