@@ -1,0 +1,5 @@
+virtualenv
+pathlib
+awscli
+s3cmd
+python-magic

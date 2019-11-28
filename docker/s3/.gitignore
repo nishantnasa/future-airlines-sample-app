@@ -1,0 +1,17 @@
+*
+!*/
+!.git*
+config/*
+!config/.gitkeep
+data/dsc-dev-input/*
+!data/dsc-dev-input/
+data/dsc-dev-output/*
+!data/dsc-dev-output/
+data/dsc-sit-input/*
+!data/dsc-sit-input/
+data/dsc-sit-output/*
+!data/dsc-sit-output/
+data/dsc-stg-input/*
+!data/dsc-stg-input/
+data/dsc-stg-output/*
+!data/dsc-stg-output/

@@ -1,0 +1,125 @@
+FROM jenkins/jnlp-slave:latest
+
+USER root
+WORKDIR /opt
+
+# extra dependencies (over what buildpack-deps already includes)
+RUN apt-get update \
+  && apt-get install -y \
+    build-essential \
+    libreadline-gplv2-dev \
+    libncursesw5-dev \
+    libssl-dev \
+    libsqlite3-dev \
+    tk-dev \
+    git-core \
+    libgdbm-dev \
+    libc6-dev \
+    libbz2-dev \
+    zlib1g-dev \
+  && rm -rf /var/lib/apt/lists/*
+
+# Install Maven
+ARG maven_version=3.5.3
+ENV MAVEN_HOME /usr/lib/mvn
+ENV PATH $MAVEN_HOME/bin:$PATH
+
+RUN wget http://archive.apache.org/dist/maven/maven-3/${maven_version}/binaries/apache-maven-${maven_version}-bin.tar.gz && \
+  tar -zxvf apache-maven-${maven_version}-bin.tar.gz && \
+  rm apache-maven-${maven_version}-bin.tar.gz && \
+  mv apache-maven-${maven_version} ${MAVEN_HOME}
+
+# Python 3
+# ensure local python is preferred over distribution python
+ENV PATH /usr/local/bin:$PATH
+
+# http://bugs.python.org/issue19846
+# > At the moment, setting "LANG=C" on a Linux system *fundamentally breaks Python 3*, and that's not OK.
+ENV LANG C.UTF-8
+
+# https://github.com/docker-library/python/issues/147
+ENV PYTHONIOENCODING UTF-8
+
+ENV PYTHON_VERSION 3.6.8
+
+RUN wget -O python.tgz "https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz" \
+  && mkdir -p /usr/src/python \
+  && tar xzf python.tgz -C /usr/src/python/ --strip-components=1 \
+  && rm python.tgz \
+  \
+  && cd /usr/src/python \
+  && gnuArch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)" \
+  && ./configure \
+    --build="$gnuArch" \
+    --enable-shared \
+    --enable-unicode=ucs4 \
+    --with-zlib-dir=/usr/local/lib \
+  && make -j "$(nproc)" \
+  && make install \
+  && ldconfig \
+  \
+  && find /usr/local -depth \
+    \( \
+      \( -type d -a \( -name test -o -name tests \) \) \
+      -o \
+      \( -type f -a \( -name '*.pyc' -o -name '*.pyo' \) \) \
+    \) -exec rm -rf '{}' + \
+  && rm -rf /usr/src/python \
+  \
+  && python3 --version
+
+# make some useful symlinks that are expected to exist
+RUN cd /usr/local/bin \
+  && ln -s idle3 idle \
+  && ln -s pydoc3 pydoc \
+  && ln -s python3 python \
+  && ln -s python3-config python-config
+
+RUN set -ex; \
+  \
+  wget -O get-pip.py 'https://bootstrap.pypa.io/get-pip.py'; \
+  \
+  python get-pip.py \
+    --disable-pip-version-check \
+    --no-cache-dir \
+    pip \
+  ; \
+  pip --version; \
+  \
+  find /usr/local -depth \
+    \( \
+      \( -type d -a \( -name test -o -name tests \) \) \
+      -o \
+      \( -type f -a \( -name '*.pyc' -o -name '*.pyo' \) \) \
+    \) -exec rm -rf '{}' +; \
+  rm -f get-pip.py
+
+# Spark
+ENV SPARK_VERSION 2.4.3
+ENV SPARK_SUB_VERSION 2.7
+ENV SPARK_PACKAGE spark-$SPARK_VERSION-bin-hadoop${SPARK_SUB_VERSION}
+ENV SPARK_HOME /usr/spark-$SPARK_VERSION
+
+RUN curl \
+    "http://apache.mirror.iphh.net/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${SPARK_SUB_VERSION}.tgz" \
+    | gunzip \
+    | tar x -C /usr/ && \
+    mv /usr/$SPARK_PACKAGE $SPARK_HOME && \
+    rm -rf $SPARK_HOME/examples $SPARK_HOME/ec2
+
+ENV PATH $PATH:$SPARK_HOME/bin:${SIMULATOR_HOME}
+
+# Configure sudo
+RUN apt-get update \
+      && apt-get install -y sudo \
+      # Add sudo log file
+      && printf "\nDefaults    logfile=/var/log/sudolog\n" >> /etc/sudoers \
+      # Delete sudo user-group privileges
+      && sed -i '/^%sudo/d' /etc/sudoers
+COPY config/sudoers.d/* /etc/sudoers.d/
+
+RUN mkdir -p /opt/build \
+      && chown -R jenkins:jenkins /opt/build
+WORKDIR /opt/build
+
+USER jenkins
